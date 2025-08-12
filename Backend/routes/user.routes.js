@@ -1,10 +1,16 @@
-import { deleteUserById } from "../models/user.model.js";
-import express from express;
-import { editeProfile } from "../controllers/user.controller.js";
+import express from "express"; // Import 'express' as an object if using `express.Router()` directly, or remove if just using Router()
+import {
+    updateUser,
+    getUserById, // -> Should be getUserById
+    getAllUsers,
+    deleteUser,
+} from "../controller/user.controller.js";
 
-const router = express.Router();
+const router = express.Router(); // Correct way to initialize Router with express
 
-router.get("/:id", getUserById);
-router.post("/:id", editeProfile);
-router.post("/:id", deleteUserById);
+router.put("/", updateUser);
+router.get("/:id", getUserById); // Route for getUserById
+router.get("/", getAllUsers);
+router.delete("/:id", deleteUser);
+
 export default router;

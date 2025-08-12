@@ -1,8 +1,10 @@
-import Database from "better-sqlite3";
+// config/db.js
+import sqlite3 from "sqlite3";
+import { open } from "sqlite"; // Assuming you're using the 'sqlite' package
 
-// Open (or create) a SQLite database file
-const db = new Database("my-database.db", {
-    verbose: console.log, // Optional: log all SQL commands
+const dbPromise = open({
+    filename: "./inventory.sqlite", // e.g., './inventory.sqlite'
+    driver: sqlite3.Database,
 });
 
-export default db;
+export default dbPromise;

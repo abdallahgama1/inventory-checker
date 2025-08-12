@@ -1,32 +1,74 @@
-import db from "../config/db.js";
-import { validateId } from "../utils/user.validator.js";
+import dbPromise from "../config/db.js"; // Changed to dbPromise for consistency
 
-export const newSession = (userId) => {
-    const { valid, id } = validateId(userId);
-    if (!valid) throw new Error("Invalid userId");
+// Create a new session
+export const newSession = async ({ userId }) => {
+    const db = await dbPromise;
+    try {
+        const result = await db.run(
+            `INSERT INTO sessions (userId) VALUES (?)`,
+            [userId]
+        );
 
-    const stmt = db.prepare(`INSERT INTO sessions ( userId ) VALUES (?)`);
-    const result = stmt.run(id);
-    return result.lastInsertRowid;
+        return {
+            id: result.lastID, // async version of lastInsertRowid
+            userId,
+        };
+    } catch (error) {
+        console.error("Error creating new session:", error);
+        throw error;
+    }
 };
 
-export const viewSession = (sessionId) => {
-    const { valid, id } = validateId(sessionId);
-    if (!valid) throw new Error("Invalid sessionId");
-
-    const stmt = db.prepare(`SELECT * FROM sessions WHERE id = ?`);
-    return stmt.get(id);
+// Get a session by ID
+export const getProductInSessionById = async ({ sessionId }) => {
+    const db = await dbPromise;
+    try {
+        const row = await db.get(`SELECT * FROM sessions WHERE id = ?`, [
+            sessionId,
+        ]);
+        return row;
+    } catch (error) {
+        console.error(`Error getting session by ID ${sessionId}:`, error);
+        throw error;
+    }
 };
 
-export const getAllSessions = () => {
-    const stmt = db.prepare(`SELECT * FROM sessions`);
-    return stmt.all();
+// Get all sessions
+export const getAllSessions = async () => {
+    const db = await dbPromise;
+    try {
+        const rows = await db.all(`SELECT * FROM sessions`);
+        return rows;
+    } catch (error) {
+        console.error("Error getting all sessions:", error);
+        throw error;
+    }
 };
 
-export const deleteSession = (sessionId) => {
-    const { valid, id } = validateId(sessionId);
-    if (!valid) throw new Error("Invalid sessionId");
+export const getSessionById = async ({ sessionId }) => {
+    const db = await dbPromise;
+    try {
+        const row = await db.get(`SELECT * FROM sessions WHERE id = ?`, [
+            sessionId,
+        ]);
+        return row;
+    } catch (error) {
+        console.error(`Error getting session by ID ${sessionId}:`, error);
+        throw error;
+    }
+};
 
-    const stmt = db.prepare(`DELETE FROM sessions WHERE id = ?`);
-    return stmt.run(id);
+// Delete a session by ID
+export const deleteSessionById = async ({ sessionId }) => {
+    const db = await dbPromise;
+    try {
+        const result = await db.run(`DELETE FROM sessions WHERE id = ?`, [
+            sessionId,
+        ]);
+
+        return result.changes > 0; // true if a row was deleted
+    } catch (error) {
+        console.error(`Error deleting session by ID ${sessionId}:`, error);
+        throw error;
+    }
 };

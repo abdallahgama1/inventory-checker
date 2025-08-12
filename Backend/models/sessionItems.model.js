@@ -1,70 +1,142 @@
-import db from "../config/db.js";
-import {
-    validateId,
-    validateUpdateProductInSession,
-    validateDeleteProductFromSession,
-    validateAddProductToSession,
-    validateFilterProductsInSession,
-} from "../utils/sessionContent.validator.js";
-export const addProductToSession = (sessionId, productData) => {
-    const stmt = db.prepare(
-        `INSERT INTO session_products (
-            sessionId, 
-            productId, 
-            product_name, 
-            product_sku,
-            quantity, 
-            sellingPrice, 
-            costPrice, 
-            status, 
-            variance
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    );
+import dbPromise from "../config/db.js";
 
-    const result = stmt.run(
-        sessionId,
-        productData.productId,
-        productData.product_name,
-        productData.product_sku,
-        productData.quantity,
-        productData.sellingPrice,
-        productData.costPrice,
-        productData.status,
-        productData.variance
-    );
-    return result.lastInsertRowid;
+// Add product to session
+export const addProductToSession = async ({ sessionId, productData }) => {
+    const db = await dbPromise;
+    try {
+        const result = await db.run(
+            `INSERT INTO session_items (
+                sessionId,
+                productId,
+                product_name,
+                product_sku,
+                expected_quantity,
+                scanned_quantity,
+                sellingPrice,
+                costPrice,
+                status,
+                variance
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+                sessionId,
+                productData.productId,
+                productData.product_name,
+                productData.product_sku,
+                productData.expected_quantity,
+                productData.scanned_quantity,
+                productData.sellingPrice,
+                productData.costPrice,
+                productData.status,
+                productData.variance,
+            ]
+        );
+
+        return {
+            id: result.lastID,
+            sessionId,
+            ...productData,
+        };
+    } catch (error) {
+        console.error(`Error adding product to session ${sessionId}:`, error);
+        throw error;
+    }
 };
 
-export const updateProductInSession = (sessionId, productId, productData) => {
-    const stmt = db.prepare(`
-        UPDATE session_products
-        SET product_name = ?, quantity = ?, price = ?
-        WHERE session_id = ? AND id = ?
-    `);
-    const result = stmt.run(
-        productData.product_name,
-        productData.quantity,
-        productData.price,
-        sessionId,
-        productId
-    );
-    return result.changes > 0; // returns true if a row was updated
+// Get single product in session
+export const getProductInSessionById = async ({ sessionId, productId }) => {
+    const db = await dbPromise;
+    try {
+        return await db.get(
+            `SELECT * FROM session_items WHERE sessionId = ? AND productId = ?`,
+            [sessionId, productId]
+        );
+    } catch (error) {
+        console.error(
+            `Error getting product ${productId} in session ${sessionId}:`,
+            error
+        );
+        throw error;
+    }
 };
 
-export const deleteProductFromSession = (sessionId, productId) => {
-    const stmt = db.prepare(`
-        DELETE FROM session_products
-        WHERE session_id = ? AND id = ?
-    `);
-    return stmt.run(sessionId, productId);
+// Get single product in session
+export const getProductInSessionBySKU = async ({ sessionId, product_sku }) => {
+    const db = await dbPromise;
+    try {
+        return await db.get(
+            `SELECT * FROM session_items WHERE sessionId = ? AND product_sku = ?`,
+            [sessionId, product_sku]
+        );
+    } catch (error) {
+        console.error(
+            `Error getting product ${product_sku} in session ${sessionId}:`,
+            error
+        );
+        throw error;
+    }
 };
 
-export const filterProductsInSession = (sessionId, filter) => {
-    const query = `
-        SELECT * FROM session_products
-        WHERE session_id = ?
-        ${filter ? `AND product_name LIKE ?` : ""}
-    `;
-    const stmt = db.prepare(query);
-    return filter ? stmt.all(sessionId, `%${filter}%`) : stmt.all(sessionId);
+// Get all products in a session
+export const getAllProductsInSession = async ({ sessionId }) => {
+    const db = await dbPromise;
+    try {
+        return await db.all(`SELECT * FROM session_items WHERE sessionId = ?`, [
+            sessionId,
+        ]);
+    } catch (error) {
+        console.error(
+            `Error getting all products in session ${sessionId}:`,
+            error
+        );
+        throw error;
+    }
+};
+
+// Update product in session
+export const updateProductInSession = async ({ sessionId, productData }) => {
+    const db = await dbPromise;
+    try {
+        const result = await db.run(
+            `UPDATE session_items
+             SET scanned_quantity = ?, status = ?, variance = ?
+             WHERE sessionId = ? AND productId = ?`,
+            [
+                productData.scanned_quantity,
+                productData.status,
+                productData.variance,
+                sessionId,
+                productData.productId, // Assuming productData.productId holds the ID for WHERE clause
+            ]
+        );
+        console.log(productData);
+        console.log(result);
+        if (result.changes === 0) return null;
+
+        return {
+            id: productData.productId,
+            sessionId,
+            ...productData,
+        };
+    } catch (error) {
+        console.error(`Error updating product in session ${sessionId}:`, error);
+        throw error;
+    }
+};
+
+// Delete product from session
+export const deleteProductFromSession = async ({ sessionId, productId }) => {
+    const db = await dbPromise;
+    try {
+        const result = await db.run(
+            `DELETE FROM session_items WHERE sessionId = ? AND productId = ?`,
+            [sessionId, productId]
+        );
+        return result.changes > 0;
+    } catch (error) {
+        console.error(
+            `Error deleting product ${productId} from session ${sessionId}:`,
+            error
+        );
+        throw error;
+    }
 };
